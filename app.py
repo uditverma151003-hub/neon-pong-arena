@@ -1,13 +1,16 @@
 from __future__ import annotations
+
 import sqlite3
 from pathlib import Path
 from typing import Any
+
 from flask import Flask, jsonify, render_template, request
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "leaderboard.db"
 
 app = Flask(__name__)
+
 
 def init_db() -> None:
     with sqlite3.connect(DB_PATH) as conn:
@@ -23,6 +26,7 @@ def init_db() -> None:
         )
         conn.commit()
 
+
 def get_top_scores(limit: int = 10) -> list[dict[str, Any]]:
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
@@ -37,13 +41,16 @@ def get_top_scores(limit: int = 10) -> list[dict[str, Any]]:
         ).fetchall()
     return [dict(row) for row in rows]
 
+
 @app.get("/")
 def index() -> str:
     return render_template("index.html", leaderboard=get_top_scores())
 
+
 @app.get("/api/leaderboard")
 def leaderboard() -> Any:
     return jsonify(get_top_scores())
+
 
 @app.post("/api/score")
 def save_score() -> Any:
@@ -53,8 +60,10 @@ def save_score() -> Any:
 
     if not player_name:
         return jsonify({"error": "Name is required."}), 400
+
     if len(player_name) > 24:
         return jsonify({"error": "Name must be 24 characters or fewer."}), 400
+
     if not isinstance(score, int) or score < 0:
         return jsonify({"error": "Score must be a non-negative integer."}), 400
 
@@ -67,6 +76,10 @@ def save_score() -> Any:
 
     return jsonify({"ok": True, "leaderboard": get_top_scores()})
 
+
 if __name__ == "__main__":
+    import os
+
     init_db()
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))  # Use Render's port
+    app.run(host="0.0.0.0", port=port)
